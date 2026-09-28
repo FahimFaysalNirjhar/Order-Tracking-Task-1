@@ -1,122 +1,145 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { useEffect, useState } from "react";
+import { ORDER, SCENARIOS } from "./data/scenarios";
+import StatusHero from "./components/StatusHero";
+import Timeline from "./components/Timeline";
+import OrderSummary from "./components/OrderSummary";
+import ActionModal from "./components/ActionModal";
+import { LoadingState, ErrorState } from "./components/States";
 
-function App() {
-  const [count, setCount] = useState(0)
+const DEMO = [
+  ["delayed", "Delayed"],
+  ["missing", "Delivered, not received"],
+  ["pending", "Tracking not available"],
+  ["loading", "Loading"],
+  ["error", "Error"],
+];
+
+export default function App() {
+  const [view, setView] = useState("delayed");
+  const [loading, setLoading] = useState(true);
+  const [modal, setModal] = useState(null);
+  const [notified, setNotified] = useState(false);
+  const [toast, setToast] = useState("");
+
+  // Choose a scenario; data scenarios start in the loading state
+  const select = (k) => {
+    setView(k);
+    setLoading(Boolean(SCENARIOS[k]));
+  };
+
+  // Fake network delay: the effect only runs the timer
+  useEffect(() => {
+    if (!loading) return;
+    const id = setTimeout(() => setLoading(false), 700);
+    return () => clearTimeout(id);
+  }, [loading, view]);
+
+  const showToast = (msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(""), 2600);
+  };
+
+  const onAction = (a) => {
+    if (a === "notify") {
+      setNotified((n) => !n);
+      showToast(
+        notified
+          ? "Notification turned off"
+          : "We’ll notify you when tracking is available",
+      );
+    } else setModal(a);
+  };
+
+  const s = SCENARIOS[view];
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <main className="mx-auto min-h-screen max-w-107.5 bg-base-200 px-4 pb-10 pt-3">
+      <p className="text-xs opacity-60">Demo scenario</p>
+      <div
+        className="mb-3 flex gap-1.5 overflow-x-auto py-1"
+        role="group"
+        aria-label="Demo scenario"
+      >
+        {DEMO.map(([k, l]) => (
+          <button
+            key={k}
+            onClick={() => select(k)}
+            aria-pressed={view === k}
+            className={`btn btn-xs whitespace-nowrap rounded-full ${view === k ? "btn-neutral" : "btn-outline"}`}
+          >
+            {l}
+          </button>
+        ))}
+      </div>
 
-      <div className="ticks"></div>
+      <header className="mb-3">
+        <p className="text-sm opacity-60">Order {ORDER.id}</p>
+        <h2 className="text-xl font-bold">Track order</h2>
+      </header>
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
+      {view === "error" ? (
+        <ErrorState
+          onRetry={() => select("delayed")}
+          onSupport={() => setModal("support")}
+        />
+      ) : view === "loading" || loading ? (
+        <LoadingState />
+      ) : (
+        <>
+          <StatusHero s={s} notified={notified} onAction={onAction} />
+          <Timeline s={s} carrier={ORDER.carrier} trk={ORDER.trk} />
+          {s.missing && (
+            <section className="card card-border bg-base-100 mt-4">
+              <div className="card-body">
+                <h2 className="card-title">Before you report</h2>
+                <ul className="list-disc pl-5 text-sm opacity-70">
+                  <li>Check your front door, porch and gate.</li>
+                  <li>Ask neighbors or building reception.</li>
+                  <li>Look for a delivery notice from the courier.</li>
+                  <li>Wait until end of day; scans sometimes post early.</li>
+                </ul>
+              </div>
+            </section>
+          )}
+          <OrderSummary order={ORDER} />
+          <section className="card card-border bg-base-100 mt-4">
+            <div className="card-body">
+              <h2 className="card-title">Need help?</h2>
+              <p className="text-sm opacity-70">
+                Our team replies within a few minutes, 8 AM – 10 PM daily.
+              </p>
+              <div className="card-actions">
+                <button
+                  className="btn flex-1"
+                  onClick={() => setModal("support")}
                 >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
+                  Contact support
+                </button>
+                <button
+                  className="btn flex-1"
+                  onClick={() => setModal("report")}
                 >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+                  Report a delivery issue
+                </button>
+              </div>
+            </div>
+          </section>
+        </>
+      )}
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+      <ActionModal
+        key={modal}
+        kind={modal}
+        onClose={() => setModal(null)}
+        onToast={showToast}
+      />
+      {toast && (
+        <div className="toast toast-center">
+          <div className="alert alert-neutral" role="status">
+            {toast}
+          </div>
+        </div>
+      )}
+    </main>
+  );
 }
-
-export default App
